@@ -28,7 +28,16 @@ interface SidebarData {
   available_actions: SidebarAction[];
 }
 
-const Menu = () => {
+interface MenuProps {
+  items: {
+    id: number;
+    title: string;
+    icon: string;
+    link: string;
+  }[];
+}
+
+const Menu = ({ items }: MenuProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const pathname = usePathname();
 

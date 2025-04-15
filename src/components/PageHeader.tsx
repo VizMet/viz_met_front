@@ -12,11 +12,12 @@ interface PageHeaderProps {
 const PageHeader = ({ buttonText, onButtonClick }: PageHeaderProps) => {
   const hasButton = buttonText || onButtonClick;
   const pathname = usePathname();
-  const title =
-    TitleLinks[pathname.replace(/^\//, "") as keyof typeof TitleLinks];
+  const title = Object.entries(TitleLinks).find(([key]) =>
+    pathname.replace(/^\//, "").includes(key)
+  )?.[1];
 
   return (
-    <div className="w-full h-10 flex items-center justify-between gap-4">
+    <div className="w-full h-10 flex items-center justify-between gap-4 mb-10">
       <div className="w-full h-full bg-dark flex items-center justify-between px-6 rounded-lg">
         <h1 className="text-white text-xl font-medium uppercase">{title}</h1>
       </div>

@@ -44,11 +44,7 @@ const ActsTable = () => {
             <th className="p-2 text-center">Материал</th>
             <th className="p-2 px-4 rounded-r-lg text-end">Вес брутто (кг)</th>
           </tr>
-          <tr className="h-8">
-            <td></td>
-            <td></td>
-            <td></td>
-          </tr>
+          <tr className="h-8"></tr>
         </thead>
         <tbody>
           {items.map((item) => (

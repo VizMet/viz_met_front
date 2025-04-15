@@ -2,14 +2,12 @@
 
 import ActsTable from "@/components/ActsTable";
 import Page from "@/components/Page";
-import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
 const AcceptanceActPage = () => {
   return (
     <Page>
-      <PageHeader />
       <div className="grid grid-cols-3 grid-rows-2 text-dark">
         <div className="py-1 px-4">
           <div className="text-xl">Контрагент</div>
