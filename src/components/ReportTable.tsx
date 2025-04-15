@@ -19,7 +19,7 @@ const ReportTable = ({ columns, data, onRowClick }: ReportTableProps) => {
   const renderCell = (column: Column, row: ReportRow) => {
     if (column.key === "status") {
       return (
-        <span className={`px-3 py-3 ${statusColors[row.status] || ""}`}>
+        <span className={`px-3 py-2 ${statusColors[row.status] || ""}`}>
           {row[column.key]}
         </span>
       );
@@ -53,8 +53,14 @@ const ReportTable = ({ columns, data, onRowClick }: ReportTableProps) => {
           {data.map((row, index) => (
             <tr
               key={index}
-              onClick={() => onRowClick?.(row)}
-              className="border-b hover:bg-[#E4E2E2] cursor-pointer"
+              onClick={() => {
+                if (row.status === "Отклонен") {
+                  onRowClick?.(row);
+                }
+              }}
+              className={`border-b hover:bg-[#E4E2E2] ${
+                row.status === "Отклонен" && "cursor-pointer"
+              }`}
             >
               {columns.map((column, index) => (
                 <td

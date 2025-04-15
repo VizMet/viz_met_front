@@ -28,16 +28,7 @@ interface SidebarData {
   available_actions: SidebarAction[];
 }
 
-interface MenuProps {
-  items: {
-    id: number;
-    title: string;
-    icon: string;
-    link: string;
-  }[];
-}
-
-const Menu = ({ items }: MenuProps) => {
+const Menu = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const pathname = usePathname();
 
@@ -81,7 +72,7 @@ const Menu = ({ items }: MenuProps) => {
       <div className="p-6 space-y-2">
         {available_actions.map((action, index) => {
           // Определяем активный элемент по точному совпадению пути
-          const isActive = pathname === action.link;
+          const isActive = pathname.includes(action.link);
 
           return (
             <Link key={index} href={action.link} title={action.tooltip}>

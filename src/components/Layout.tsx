@@ -36,7 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-dark">
       {pathname !== "/signUp" && <Header />}
       <div className="relative">
-        {pathname !== "/signUp" && user && <Menu items={user.items} />}
+        {pathname !== "/signUp" && user && <Menu />}
         <main
           className={cn(
             "transition-all duration-300 h-screen",

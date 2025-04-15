@@ -7,6 +7,7 @@ export enum TitleLinks {
   price_change_report = "Отчет по изменению цены",
   shipment_acts_report = "Отчет по актам отгрузки",
   acceptance_acts_report = "Отчет по актам приема",
+  acceptance_acts_report_reason = "Причина отклонения",
 
   sorting_nomenclatures = "Сортировка номенклатуры",
 
@@ -16,3 +17,7 @@ export enum TitleLinks {
   deposit_money_on_cashier = "Внести деньги на кассира",
   transfer_money_between_cashiers = "Перевести деньги между кассирами",
 }
+
+export const specialHeaderStyles: Record<string, string> = {
+  acceptance_acts_report_reason: "bg-[#FFC9CA] text-[#9C1111] font-bold",
+};
