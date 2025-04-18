@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
 import { DatePickerWithRange } from "./DatePickerRange";
+import { Contractor, useGetContractorsQuery } from "@/api/api";
 
 // Типы для новой структуры данных API
 interface IconData {
@@ -66,18 +67,61 @@ const ReportFormBuilder = ({
   onSubmit,
   onReturn,
 }: ReportFormBuilderProps) => {
-  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({
+    created_by: formData.form.created_by.user_full_name,
+  });
+  const [displayValues, setDisplayValues] = useState<Record<string, string>>(
+    {}
+  );
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showContractorsList, setShowContractorsList] = useState(false);
+  const contractorRef = useRef<HTMLDivElement>(null);
+
+  // Получаем список контрагентов с API
+  const { data: contractorsData, isLoading: contractorsLoading } =
+    useGetContractorsQuery();
+
+  // Фильтруем контрагентов по поисковому запросу
+  const filteredContractors =
+    contractorsData?.content?.filter((contractor: Contractor) =>
+      contractor.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
+
+  // Обработчик клика вне списка контрагентов
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        contractorRef.current &&
+        !contractorRef.current.contains(event.target as Node)
+      ) {
+        setShowContractorsList(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleFilterChange = (
     fieldKey: string,
     label: string,
-    value: string
+    value: string,
+    displayValue?: string
   ) => {
     setFilterValues((prev) => ({
       ...prev,
       [fieldKey]: value,
     }));
+
+    if (displayValue !== undefined) {
+      setDisplayValues((prev) => ({
+        ...prev,
+        [fieldKey]: displayValue,
+      }));
+    }
 
     if (errors[fieldKey]) {
       setErrors((prev) => {
@@ -88,13 +132,27 @@ const ReportFormBuilder = ({
     }
   };
 
+  // Обработчик выбора контрагента
+  const handleContractorSelect = (id: string, name: string) => {
+    handleFilterChange("contractor", formData.form.contractor.label, id, name);
+    setSearchTerm("");
+    setShowContractorsList(false);
+  };
+
+  // Обработчик изменения поля поиска контрагента
+  const handleContractorSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setShowContractorsList(value.length > 0);
+  };
+
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
     const requiredFields = ["act_number", "contractor", "status"];
 
     // Проверяем только обязательные поля
     requiredFields.forEach((fieldKey) => {
-      const field = formData.form[fieldKey as keyof typeof formData.form];
+      // const field = formData.form[fieldKey as keyof typeof formData.form];
       if (!filterValues[fieldKey] || filterValues[fieldKey].trim() === "") {
         newErrors[fieldKey] = "Обязательное поле";
       }
@@ -108,8 +166,14 @@ const ReportFormBuilder = ({
     e.preventDefault();
 
     if (validateForm()) {
-      console.log("Отправка формы со следующими данными:", filterValues);
-      onSubmit(filterValues);
+      // Убедимся, что created_by точно есть в данных
+      const dataToSubmit = {
+        ...filterValues,
+        created_by: formData.form.created_by.user_full_name,
+      };
+
+      console.log("Отправка формы со следующими данными:", dataToSubmit);
+      onSubmit(dataToSubmit);
     } else {
       console.log("Форма содержит ошибки:", errors);
     }
@@ -197,23 +261,70 @@ const ReportFormBuilder = ({
                 />
                 <p>{(field as TextFormField).label}</p>
               </div>
-              <div className="flex flex-col gap-1 relative">
-                <Input
-                  type="text"
-                  placeholder={(field as TextFormField).label}
-                  value={filterValues[key] || ""}
-                  onChange={(e) =>
-                    handleFilterChange(
-                      key,
-                      (field as TextFormField).label,
-                      e.target.value
-                    )
-                  }
-                  className={cn(
-                    "flex-1 bg-[#E4E2E2] hover:bg-accent",
-                    errors[key] && "border-red-500"
-                  )}
-                />
+              <div
+                className="flex flex-col gap-1 relative"
+                ref={key === "contractor" ? contractorRef : undefined}
+              >
+                {key === "contractor" ? (
+                  <>
+                    <Input
+                      type="text"
+                      placeholder="Введите название контрагента"
+                      value={searchTerm || displayValues[key] || ""}
+                      onChange={handleContractorSearch}
+                      onFocus={() =>
+                        setShowContractorsList(searchTerm.length > 0)
+                      }
+                      className={cn(
+                        "flex-1 bg-[#E4E2E2] hover:bg-accent",
+                        errors[key] && "border-red-500"
+                      )}
+                    />
+                    {showContractorsList && (
+                      <div className="absolute top-full left-0 right-0 max-h-60 overflow-auto bg-white shadow-lg rounded-md z-10 mt-1">
+                        {contractorsLoading ? (
+                          <div className="p-2 text-center">Загрузка...</div>
+                        ) : filteredContractors.length > 0 ? (
+                          filteredContractors.map((contractor: Contractor) => (
+                            <div
+                              key={contractor.id}
+                              className="p-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() =>
+                                handleContractorSelect(
+                                  contractor.id,
+                                  contractor.name
+                                )
+                              }
+                            >
+                              {contractor.name}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-2 text-center">
+                            Ничего не найдено
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Input
+                    type="text"
+                    placeholder={(field as TextFormField).label}
+                    value={filterValues[key] || ""}
+                    onChange={(e) =>
+                      handleFilterChange(
+                        key,
+                        (field as TextFormField).label,
+                        e.target.value
+                      )
+                    }
+                    className={cn(
+                      "flex-1 bg-[#E4E2E2] hover:bg-accent",
+                      errors[key] && "border-red-500"
+                    )}
+                  />
+                )}
                 {errors[key] && (
                   <span className="text-red-500 text-sm absolute -bottom-5">
                     {errors[key]}

@@ -66,18 +66,15 @@ export interface ProfileInfo {
   };
 }
 
-// Добавляем интерфейс для контрагентов
+// Обновление интерфейса для контрагентов
 export interface Contractor {
-  id: number;
+  id: string; // Изменено с number на string
   name: string;
-  // Добавьте другие поля, которые возвращает API
 }
 
 export interface ContractorsResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: Contractor[];
+  status: number;
+  content: Contractor[]; // Изменена структура в соответствии с ответом API
 }
 
 // Типы для формы отчета по актам приема
