@@ -1,38 +1,41 @@
 "use client";
 
 import { useState } from "react";
-// import { ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { useGetProfileInfoQuery } from "@/api/api";
 import { sidebarData } from "@/mocks/sideBar";
-
-interface SidebarAction {
-  name: string;
-  icon_url: string;
-  style: string | null;
-  is_active: boolean;
-  tooltip: string;
-  link: string;
-}
-
-interface UserInfo {
-  name: string;
-  position: string;
-}
-
-interface SidebarData {
-  user_info: UserInfo;
-  available_actions: SidebarAction[];
-}
 
 const Menu = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const pathname = usePathname();
 
-  const { user_info, available_actions } = sidebarData as SidebarData;
+  // Загружаем данные профиля из API
+  const { data: profileData, isLoading, error } = useGetProfileInfoQuery();
+
+  // Если данные загружаются, показываем индикатор загрузки
+  if (isLoading) {
+    return (
+      <div className="fixed left-0 h-full bg-light w-full sm:w-[394px] flex items-center justify-center">
+        <div className="text-dark">Загрузка...</div>
+      </div>
+    );
+  }
+
+  // Если произошла ошибка, показываем сообщение
+  if (error || !profileData || !profileData.content?.sidebar) {
+    return (
+      <div className="fixed left-0 h-full bg-light w-full sm:w-[394px] flex items-center justify-center">
+        <div className="text-red-500">Ошибка загрузки данных</div>
+      </div>
+    );
+  }
+
+  const { user_data, available_operations = [] } = profileData.content.sidebar;
 
   return (
     <div
@@ -41,11 +44,12 @@ const Menu = () => {
         isExpanded ? "w-full sm:w-[394px]" : "w-20"
       )}
     >
-      {/* <Button
+      <Button
         variant="ghost"
         size="icon"
         className="absolute -right-4 top-4 w-8 h-8 rounded-full bg-light border border-white/10 hover:scale-110 transition-transform"
         onClick={() => setIsExpanded(!isExpanded)}
+        disabled={true}
       >
         <ChevronLeft
           className={cn(
@@ -53,43 +57,48 @@ const Menu = () => {
             !isExpanded && "rotate-180"
           )}
         />
-      </Button> */}
+      </Button>
 
       <div className="flex p-6 gap-5">
-        <Image src="/icons/profile.svg" alt="Logo" width={42} height={42} />
+        <Image
+          src={"/icons/profile.svg"}
+          alt="Profile"
+          width={user_data.icon_data?.width || 42}
+          height={user_data.icon_data?.height || 42}
+        />
         {isExpanded && (
           <div className="flex flex-col">
             <span className="text-lg sm:text-xl text-dark font-bold whitespace-normal break-words">
-              {user_info.name}
+              {user_data.user_full_name}
             </span>
             <span className="text-base sm:text-lg text-dark truncate font-medium">
-              {user_info.position}
+              {user_data.position}
             </span>
           </div>
         )}
       </div>
 
       <div className="p-6 space-y-2">
-        {available_actions.map((action, index) => {
-          // Определяем активный элемент по точному совпадению пути
-          const isActive = pathname.includes(action.link);
+        {sidebarData.available_actions.map((operation, index) => {
+          // Определяем активный элемент по совпадению пути
+          const isActive = pathname.includes(operation.link);
 
           return (
-            <Link key={index} href={action.link} title={action.tooltip}>
+            <Link key={index} href={operation.link} title={operation.tooltip}>
               <Button
                 variant="ghost"
                 className={cn(
                   "w-full justify-start gap-3 text-dark hover:bg-white/20 transition-colors h-14",
                   !isExpanded && "justify-center px-2",
                   isActive && "bg-white hover:bg-white/90",
-                  !action.is_active && "opacity-50 pointer-events-none"
+                  !operation.is_active && "opacity-50 pointer-events-none"
                 )}
-                disabled={!action.is_active}
+                disabled={!operation.is_active}
               >
                 <div className="min-w-[24px] min-h-[24px] flex items-center justify-center">
                   <Image
-                    src={action.icon_url}
-                    alt={action.name}
+                    src={operation.icon_url}
+                    alt={operation.name}
                     width={24}
                     height={24}
                     className="object-contain"
@@ -97,7 +106,7 @@ const Menu = () => {
                 </div>
                 {isExpanded && (
                   <span className="text-lg sm:text-xl text-dark truncate font-bold">
-                    {action.name}
+                    {operation.name}
                   </span>
                 )}
               </Button>

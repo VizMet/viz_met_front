@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 
@@ -20,11 +20,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "@/store/store";
-import { loginUser, clearError } from "@/store/slices/authSlice";
+import { useSignInMutation } from "@/api/api";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { tokenService } from "@/services/tokenService";
 
 const formSchema = z.object({
   login: z.string().min(1, {
@@ -36,16 +34,12 @@ const formSchema = z.object({
 });
 
 const SignUp = () => {
-  const { user } = useSelector((state: RootState) => state.auth);
+  const [signIn, { isLoading, isError }] = useSignInMutation();
 
-  const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-  const { isLoading, isAuthenticated, error } = useSelector(
-    (state: RootState) => state.auth
-  );
-
   const [showPassword, setShowPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -56,25 +50,33 @@ const SignUp = () => {
   });
 
   useEffect(() => {
-    // Очищаем ошибку при размонтировании компонента
     return () => {
-      dispatch(clearError());
+      setErrorMessage(null);
     };
-  }, [dispatch]);
+  }, []);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      setTimeout(() => {
-        router.replace(user.items[0].link);
-      }, 100);
+    if (isError) {
+      setErrorMessage("Неверный логин или пароль");
     }
-  }, [isAuthenticated, router, user]);
+  }, [isError]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSuccess(false);
+    setErrorMessage(null);
+
     try {
-      await dispatch(loginUser(values)).unwrap();
+      const result = await signIn({
+        username: values.login,
+        password: values.password,
+      }).unwrap();
+
+      // Используем сервис для сохранения токенов
+      tokenService.setAccessToken(result.access_token);
+      tokenService.setRefreshToken(result.refresh_token);
+
       setIsSuccess(true);
+      router.replace("/");
     } catch (error) {
       console.error("Ошибка авторизации:", error);
     }
@@ -157,8 +159,10 @@ const SignUp = () => {
                             </Button>
                           </div>
                         </FormControl>
-                        {error && (
-                          <p className="text-red-500 text-sm mt-2">{error}</p>
+                        {errorMessage && (
+                          <p className="text-red-500 text-sm mt-2">
+                            {errorMessage}
+                          </p>
                         )}
                         <FormMessage />
                       </FormItem>

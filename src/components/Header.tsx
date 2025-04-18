@@ -1,21 +1,31 @@
 import Image from "next/image";
 import { Button } from "./ui/button";
 import Link from "next/link";
-import { useDispatch } from "react-redux";
-import { logout } from "@/store/slices/authSlice";
+import { useLogoutMutation } from "@/api/api";
 import { useRouter } from "next/navigation";
+import { tokenService } from "@/services/tokenService";
 
 const Header = () => {
-  const dispatch = useDispatch();
+  const [logout, { isLoading }] = useLogoutMutation();
   const router = useRouter();
 
-  const handleLogout = () => {
-    // Удаляем cookie
-    document.cookie = "auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-    // Диспатчим экшен логаута
-    dispatch(logout());
-    // Редиректим на страницу входа
-    router.replace("/signUp");
+  const handleLogout = async () => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (refreshToken) {
+        await logout({ refresh: refreshToken }).unwrap();
+      }
+
+      tokenService.clearTokens();
+
+      router.replace("/signUp");
+    } catch (error) {
+      console.error("Ошибка при выходе:", error);
+
+      tokenService.clearTokens();
+      router.replace("/signUp");
+    }
   };
 
   return (
@@ -44,8 +54,9 @@ const Header = () => {
               variant="default"
               className="bg-action text-white hover:bg-action hover:opacity-75 text-sm sm:text-base px-3 sm:px-4"
               onClick={handleLogout}
+              disabled={isLoading}
             >
-              Выйти
+              {isLoading ? "Выход..." : "Выйти"}
             </Button>
           </div>
         </div>
