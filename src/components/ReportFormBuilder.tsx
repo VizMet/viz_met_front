@@ -4,32 +4,85 @@ import { useState } from "react";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { FormData, FormFilter } from "@/mocks/forms";
 import { cn } from "@/lib/utils";
 import { DatePickerWithRange } from "./DatePickerRange";
 
-interface FormBuilderProps {
-  formData: FormData;
+// Типы для новой структуры данных API
+interface IconData {
+  url: string;
+  width: number;
+  height: number;
+}
+
+interface FormFieldBase {
+  label: string;
+  icon_data: IconData;
+}
+
+interface TextFormField extends FormFieldBase {
+  value: string | null;
+}
+
+interface UserFormField extends FormFieldBase {
+  user_full_name: string;
+}
+
+interface DateRangeFormField extends FormFieldBase {
+  from: string | null;
+  to: string | null;
+}
+
+interface FormAction {
+  type: string;
+  label: string;
+  icon: IconData;
+  options_url?: string;
+}
+
+interface ReportFormContent {
+  title: string;
+  form: {
+    created_by: UserFormField;
+    date_range: DateRangeFormField;
+    act_number: TextFormField;
+    contractor: TextFormField;
+    status: TextFormField;
+  };
+  actions: FormAction[];
+}
+
+interface ReportFormBuilderProps {
+  formData: ReportFormContent;
   onSubmit: (filters: Record<string, string>) => void;
+  onReturn: () => void;
 }
 
 interface ValidationErrors {
   [key: string]: string;
 }
 
-const FormBuilder = ({ formData, onSubmit }: FormBuilderProps) => {
+const ReportFormBuilder = ({
+  formData,
+  onSubmit,
+  onReturn,
+}: ReportFormBuilderProps) => {
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<ValidationErrors>({});
 
-  const handleFilterChange = (filter: FormFilter, value: string) => {
+  const handleFilterChange = (
+    fieldKey: string,
+    label: string,
+    value: string
+  ) => {
     setFilterValues((prev) => ({
       ...prev,
-      [filter.label]: value,
+      [fieldKey]: value,
     }));
-    if (errors[filter.label]) {
+
+    if (errors[fieldKey]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
-        delete newErrors[filter.label];
+        delete newErrors[fieldKey];
         return newErrors;
       });
     }
@@ -37,13 +90,13 @@ const FormBuilder = ({ formData, onSubmit }: FormBuilderProps) => {
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
+    const requiredFields = ["act_number", "contractor", "status"];
 
-    formData.filters.forEach((filter) => {
-      if (
-        !filterValues[filter.label] ||
-        filterValues[filter.label].trim() === ""
-      ) {
-        newErrors[filter.label] = "Обязательное поле";
+    // Проверяем только обязательные поля
+    requiredFields.forEach((fieldKey) => {
+      const field = formData.form[fieldKey as keyof typeof formData.form];
+      if (!filterValues[fieldKey] || filterValues[fieldKey].trim() === "") {
+        newErrors[fieldKey] = "Обязательное поле";
       }
     });
 
@@ -62,91 +115,153 @@ const FormBuilder = ({ formData, onSubmit }: FormBuilderProps) => {
     }
   };
 
+  // Находим кнопки действий
+  const returnAction = formData.actions.find(
+    (action) => action.type === "return"
+  );
+  const submitAction = formData.actions.find(
+    (action) => action.type === "zoom-in"
+  );
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-20">
+    <form onSubmit={handleSubmit} className="space-y-12">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-10 w-1/2">
-        {formData.filters.map((filter, index) => (
-          <div
-            key={index}
-            className={cn(
-              "grid grid-cols-2",
-              !filter.is_active && "opacity-50 pointer-events-none"
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <Image
-                src={filter.icon_url}
-                alt={filter.label}
-                width={15}
-                height={15}
-                className="object-contain"
-              />
-              <p>{filter.label}</p>
-            </div>
-
-            <div className="flex flex-col gap-1 relative">
-              {filter.type === "date" ? (
-                <DatePickerWithRange
-                  onDateChange={(value) => handleFilterChange(filter, value)}
-                  value={filterValues[filter.label]}
-                  error={errors[filter.label]}
-                />
-              ) : (
-                <Input
-                  type="text"
-                  placeholder={filter.label}
-                  value={filterValues[filter.label] || ""}
-                  onChange={(e) => handleFilterChange(filter, e.target.value)}
-                  disabled={!filter.is_active}
-                  className={cn(
-                    "flex-1 bg-[#E4E2E2] hover:bg-accent",
-                    errors[filter.label] && "border-red-500"
-                  )}
-                />
-              )}
-              {errors[filter.label] && (
-                <span className="text-red-500 text-sm absolute -bottom-5">
-                  {errors[filter.label]}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex justify-end space-x-4">
-        {formData.actions.map((action, index) => (
-          <Button
-            key={index}
-            type="submit"
-            disabled={!action.is_active}
-            title={action.tooltip}
-            style={
-              action.style
-                ? {
-                    color: action.style.color,
-                    backgroundColor: action.style.background_color,
-                    fontSize: action.style.fontSize,
-                    fontStyle: action.style.fontStyle,
-                    fontWeight: action.style.fontWeight,
-                  }
-                : undefined
-            }
-            className="flex items-center gap-2"
-          >
+        {/* Поле Created By */}
+        <div className="grid grid-cols-2">
+          <div className="flex items-center gap-2">
             <Image
-              src={action.icon_url}
-              alt={action.name}
-              width={20}
-              height={20}
+              src={"/icons/user.svg"}
+              alt={formData.form.created_by.label}
+              width={formData.form.created_by.icon_data.width}
+              height={formData.form.created_by.icon_data.height}
               className="object-contain"
             />
-            {action.name}
+            <p>{formData.form.created_by.label}</p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Input
+              type="text"
+              value={formData.form.created_by.user_full_name}
+              disabled
+              className="flex-1 bg-[#E4E2E2]"
+            />
+          </div>
+        </div>
+
+        {/* Поле Date Range */}
+        <div className="grid grid-cols-2">
+          <div className="flex items-center gap-2">
+            <Image
+              src={"/icons/calendary.svg"}
+              alt={formData.form.date_range.label}
+              width={formData.form.date_range.icon_data.width}
+              height={formData.form.date_range.icon_data.height}
+              className="object-contain"
+            />
+            <p>{formData.form.date_range.label}</p>
+          </div>
+          <div className="flex flex-col gap-1 relative">
+            <DatePickerWithRange
+              onDateChange={(value) =>
+                handleFilterChange(
+                  "date_range",
+                  formData.form.date_range.label,
+                  value
+                )
+              }
+              value={
+                filterValues["date_range"] ||
+                (formData.form.date_range.from && formData.form.date_range.to
+                  ? `${formData.form.date_range.from} - ${formData.form.date_range.to}`
+                  : "")
+              }
+              error={errors["date_range"]}
+            />
+          </div>
+        </div>
+
+        {/* Текстовые поля */}
+        {Object.entries(formData.form)
+          .filter(([key]) =>
+            ["act_number", "contractor", "status"].includes(key)
+          )
+          .map(([key, field]) => (
+            <div key={key} className="grid grid-cols-2">
+              <div className="flex items-center gap-2">
+                <Image
+                  src={"/icons/create-act.svg"}
+                  alt={(field as TextFormField).label}
+                  width={(field as TextFormField).icon_data.width}
+                  height={(field as TextFormField).icon_data.height}
+                  className="object-contain"
+                />
+                <p>{(field as TextFormField).label}</p>
+              </div>
+              <div className="flex flex-col gap-1 relative">
+                <Input
+                  type="text"
+                  placeholder={(field as TextFormField).label}
+                  value={filterValues[key] || ""}
+                  onChange={(e) =>
+                    handleFilterChange(
+                      key,
+                      (field as TextFormField).label,
+                      e.target.value
+                    )
+                  }
+                  className={cn(
+                    "flex-1 bg-[#E4E2E2] hover:bg-accent",
+                    errors[key] && "border-red-500"
+                  )}
+                />
+                {errors[key] && (
+                  <span className="text-red-500 text-sm absolute -bottom-5">
+                    {errors[key]}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+      </div>
+
+      <div className="flex justify-between">
+        {returnAction && (
+          <Button
+            type="button"
+            onClick={onReturn}
+            className="flex items-center gap-2"
+          >
+            {/* <Image
+              src={"/icons/return.svg"}
+              alt={returnAction.label}
+              width={returnAction.icon.width}
+              height={returnAction.icon.height}
+              className="object-contain"
+            /> */}
+            {returnAction.label}
           </Button>
-        ))}
+        )}
+
+        <div className="flex-1"></div>
+
+        {submitAction && (
+          <Button
+            type="submit"
+            className="flex items-center gap-2 bg-[#4094F7] text-white"
+          >
+            <Image
+              src={"/icons/search.svg"}
+              alt={submitAction.label}
+              width={submitAction.icon.width}
+              height={submitAction.icon.height}
+              className="object-contain"
+            />
+            {submitAction.label}
+          </Button>
+        )}
       </div>
     </form>
   );
 };
 
-export default FormBuilder;
+export default ReportFormBuilder;

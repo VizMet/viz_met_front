@@ -14,5 +14,6 @@ export const API_URLS = {
   },
   core: {
     contractors: "/core/v1/contractors/",
+    receptionActReportForm: "/core/v1/reception_act/report_form/",
   },
 };

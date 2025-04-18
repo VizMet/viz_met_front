@@ -80,6 +80,53 @@ export interface ContractorsResponse {
   results: Contractor[];
 }
 
+// Типы для формы отчета по актам приема
+export interface IconData {
+  url: string;
+  width: number;
+  height: number;
+}
+
+export interface FormFieldBase {
+  label: string;
+  icon_data: IconData;
+}
+
+export interface TextFormField extends FormFieldBase {
+  value: string | null;
+}
+
+export interface UserFormField extends FormFieldBase {
+  user_full_name: string;
+}
+
+export interface DateRangeFormField extends FormFieldBase {
+  from: string | null;
+  to: string | null;
+}
+
+export interface FormAction {
+  type: string;
+  label: string;
+  icon: IconData;
+  options_url?: string;
+}
+
+export interface ReceptionActReportForm {
+  status: number;
+  content: {
+    title: string;
+    form: {
+      created_by: UserFormField;
+      date_range: DateRangeFormField;
+      act_number: TextFormField;
+      contractor: TextFormField;
+      status: TextFormField;
+    };
+    actions: FormAction[];
+  };
+}
+
 // Настройка customFetchBase для автоматического обновления токена
 const customFetchBase = async (
   args: string | FetchArgs,
@@ -162,6 +209,13 @@ export const api = createApi({
         method: "GET",
       }),
     }),
+    // В блоке endpoints добавим новый запрос:
+    getReceptionActReportForm: builder.query<ReceptionActReportForm, void>({
+      query: () => ({
+        url: API_URLS.core.receptionActReportForm,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -172,4 +226,5 @@ export const {
   useRefreshTokenMutation,
   useGetProfileInfoQuery,
   useGetContractorsQuery,
+  useGetReceptionActReportFormQuery,
 } = api;
